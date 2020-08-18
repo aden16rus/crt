@@ -104,6 +104,9 @@ class FetchDataCommand extends Command
         if (($status = $response->getStatusCode()) !== 200) {
             throw new RuntimeException(sprintf('Response status is %d, expected %d', $status, 200));
         }
+
+        $this->resetMovieTable();
+
         $data = $response->getBody()->getContents();
         $this->processXml($data);
 
@@ -120,21 +123,27 @@ class FetchDataCommand extends Command
     protected function processXml(string $data): void
     {
         $xml = (new \SimpleXMLElement($data))->children();
-//        $namespace = $xml->getNamespaces(true)['content'];
+        $namespace = $xml->getNamespaces(true)['content'];
 //        dd((string) $xml->channel->item[0]->children($namespace)->encoded);
 
         if (!property_exists($xml, 'channel')) {
             throw new RuntimeException('Could not find \'channel\' element in feed');
         }
+
+        $count = 0;
         foreach ($xml->channel->item as $item) {
+
             $trailer = $this->getMovie((string) $item->title)
                 ->setTitle((string) $item->title)
                 ->setDescription((string) $item->description)
                 ->setLink((string) $item->link)
                 ->setPubDate($this->parseDate((string) $item->pubDate))
+                ->setImage($this->parsePoster($namespace, $item))
             ;
 
             $this->doctrine->persist($trailer);
+            $count++;
+            if($count >= 10){break;}
         }
 
         $this->doctrine->flush();
@@ -174,4 +183,25 @@ class FetchDataCommand extends Command
 
         return $item;
     }
+
+    /**
+     * Remove all movies in db before seeding
+     */
+    protected function resetMovieTable(): void
+    {
+        $repository = $this->doctrine->getRepository(Movie::class);
+        $entities = $repository->findAll();
+
+        foreach ($entities as $entity) {
+            $this->doctrine->remove($entity);
+        }
+        $this->doctrine->flush();
+    }
+
+    protected function parsePoster(string $namespace, \SimpleXMLElement $item): ?string
+    {
+        preg_match('/<img src="(.+?)" /', (string) $item->children($namespace)->encoded, $match);
+        return $match[1];
+    }
+
 }
