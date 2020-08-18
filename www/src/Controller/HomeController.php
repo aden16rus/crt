@@ -4,13 +4,12 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
-use App\Entity\Movie;
-use Doctrine\Common\Collections\ArrayCollection;
-use Doctrine\Common\Collections\Collection;
-use Doctrine\ORM\EntityManagerInterface;
+use App\Services\MovieService;
+use Exception;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Slim\Exception\HttpBadRequestException;
+use Slim\Exception\HttpNotFoundException;
 use Slim\Interfaces\RouteCollectorInterface;
 use Twig\Environment;
 
@@ -28,24 +27,23 @@ class HomeController
      * @var Environment
      */
     private $twig;
-
     /**
-     * @var EntityManagerInterface
+     * @var MovieService
      */
-    private $em;
+    private $movieService;
 
     /**
      * HomeController constructor.
      *
      * @param RouteCollectorInterface $routeCollector
-     * @param Environment             $twig
-     * @param EntityManagerInterface  $em
+     * @param Environment $twig
+     * @param MovieService $movieService
      */
-    public function __construct(RouteCollectorInterface $routeCollector, Environment $twig, EntityManagerInterface $em)
+    public function __construct(RouteCollectorInterface $routeCollector, Environment $twig, MovieService $movieService)
     {
         $this->routeCollector = $routeCollector;
         $this->twig = $twig;
-        $this->em = $em;
+        $this->movieService = $movieService;
     }
 
     /**
@@ -58,11 +56,12 @@ class HomeController
      */
     public function index(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
     {
+        $movies = $this->movieService->getAllMovies();
         try {
             $data = $this->twig->render('index.html.twig', [
-                'trailers' => $this->fetchData(),
+                'trailers' => $movies,
             ]);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             throw new HttpBadRequestException($request, $e->getMessage(), $e);
         }
 
@@ -78,34 +77,28 @@ class HomeController
      * @return ResponseInterface
      *
      * @throws HttpBadRequestException
+     * @throws HttpNotFoundException
      */
     public function show(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
     {
         $movie_id = $request->getAttribute('id');
-        $movie = $this->em->getRepository(Movie::class)
-            ->find($movie_id);
+
+        $m = $this->movieService->getMovie((int) $movie_id);
+
+        if (!$m) {
+            throw new HttpNotFoundException($request, 'Trailer Not Found');
+        }
 
         try {
             $data = $this->twig->render('movie/index.html.twig', [
-                'movie' => $movie,
+                'movie' => $m,
             ]);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             throw new HttpBadRequestException($request, $e->getMessage(), $e);
         }
 
         $response->getBody()->write($data);
 
         return $response;
-    }
-
-    /**
-     * @return Collection
-     */
-    protected function fetchData(): Collection
-    {
-        $data = $this->em->getRepository(Movie::class)
-            ->findAll();
-
-        return new ArrayCollection($data);
     }
 }
