@@ -4,3 +4,9 @@ main:
   controller: App\Controller\HomeController
   action: index
 
+single:
+  method: 'get'
+  path: movie/{id}
+  controller: App\Controller\HomeController
+  action: show
+

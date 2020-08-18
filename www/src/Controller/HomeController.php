@@ -59,8 +59,35 @@ class HomeController
     public function index(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
     {
         try {
-            $data = $this->twig->render('home/index.html.twig', [
+            $data = $this->twig->render('index.html.twig', [
                 'trailers' => $this->fetchData(),
+            ]);
+        } catch (\Exception $e) {
+            throw new HttpBadRequestException($request, $e->getMessage(), $e);
+        }
+
+        $response->getBody()->write($data);
+
+        return $response;
+    }
+
+    /**
+     * @param ServerRequestInterface $request
+     * @param ResponseInterface $response
+     *
+     * @return ResponseInterface
+     *
+     * @throws HttpBadRequestException
+     */
+    public function show(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
+    {
+        $movie_id = $request->getAttribute('id');
+        $movie = $this->em->getRepository(Movie::class)
+            ->find($movie_id);
+
+        try {
+            $data = $this->twig->render('movie/index.html.twig', [
+                'movie' => $movie,
             ]);
         } catch (\Exception $e) {
             throw new HttpBadRequestException($request, $e->getMessage(), $e);

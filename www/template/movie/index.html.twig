@@ -1,0 +1,21 @@
+{% extends 'layouts/main.html.twig' %}
+
+{% block title %}{{ trailers | length }} iTunes Movie trailers{% endblock %}
+
+{% block content %}
+    <div class="container">
+        <div class="card">
+            <div class="card-body">
+                <div class="card-title">
+                    <h4>{{ movie.title }}</h4>
+                </div>
+                <img src="{{ movie.image }}" alt="{{ movie.title }}"><br><br>
+                {{ movie.description }}<br><br>
+                <a href="{{ movie.link }}">Source</a>
+            </div>
+            <div class="card-footer">
+                <a href="/" class="btn btn-info">Go back</a>
+            </div>
+        </div>
+    </div>
+{% endblock %}
